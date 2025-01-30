@@ -25,7 +25,6 @@ function MarkdownContent() {
     const markdownUrl = searchParams.get("url");
 
     const [article, setArticle] = useState<BackendArticle | null>(null);
-
     const [error, setError] = useState<string | undefined>(undefined);
 
     useEffect(() => {
@@ -53,9 +52,19 @@ function MarkdownContent() {
             const markdown = await response.text()
 
             const {data, content} = grayMatter(markdown);
+            if(!data && !content){
+                setError("No frontmatter or content found")
+                return
+            }
 
             const path = markdownUrl.split("/").slice(-1)[0];
+            if(!path){
+                setError("No path found")
+            }
             const date = new Date(path.split("-").slice(0, 3).join("-"));
+            if(!date){
+                setError("No date found")
+            }
 
             const article = {
                 slug: [],
@@ -66,7 +75,6 @@ function MarkdownContent() {
             }
 
             setArticle(article as BackendArticle)
-            setError(undefined)
         })();
     }, [markdownUrl, searchParams]);
 
