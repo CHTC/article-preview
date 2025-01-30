@@ -25,8 +25,8 @@ function MarkdownContent() {
     const markdownUrl = searchParams.get("url");
 
     const [article, setArticle] = useState<BackendArticle | null>(null);
-
     const [error, setError] = useState<string | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
         (async () => {
@@ -38,35 +38,50 @@ function MarkdownContent() {
                 return;
             }
 
-            let response;
             try {
-                response = await fetch(markdownUrl);
+                const response = await fetch(markdownUrl);
                 if (!response.ok) {
                     setError(`Failed to fetch markdown: ${response.statusText}`);
-                    return
+                    setIsLoading(false);
+                    return;
                 }
-            } catch (e) {
-                setError(`Failed to fetch markdown: ${e}`);
-                return
+
+                const markdown = await response.text();
+
+                let parsedData;
+                try {
+                    parsedData = grayMatter(markdown);
+                } catch {
+                    setError("Error parsing markdown file. Ensure it has valid frontmatter");
+                    setIsLoading(false);
+                    return;
+                }
+
+                const { data, content } = parsedData;
+                const pathParts = markdownUrl.split("/");
+                const filename = pathParts[pathParts.length - 1] || "";
+
+                if (!filename) {
+                    setError("Invalid markdown file path");
+                    setIsLoading(false);
+                    return;
+                }
+
+                const dateParts = filename.split("-").slice(0, 3);
+                const date = dateParts.length === 3 ? new Date(dateParts.join("-")) : new Date();
+
+                setArticle({
+                    slug: [],
+                    date: date,
+                    path: filename,
+                    content,
+                    ...(data as Omit<ArticleType, "content" | "date">)
+                } as BackendArticle);
+            } catch {
+                setError("Article fetch failed");
+            } finally {
+                setIsLoading(false);
             }
-
-            const markdown = await response.text()
-
-            const {data, content} = grayMatter(markdown);
-
-            const path = markdownUrl.split("/").slice(-1)[0];
-            const date = new Date(path.split("-").slice(0, 3).join("-"));
-
-            const article = {
-                slug: [],
-                date: date,
-                path: markdownUrl.split("/").slice(-1)[0],
-                content,
-                ...(data as Omit<ArticleType, "content" | "date">)
-            }
-
-            setArticle(article as BackendArticle)
-            setError(undefined)
         })();
     }, [markdownUrl, searchParams]);
 
@@ -79,12 +94,20 @@ function MarkdownContent() {
         )
     }
 
+    if (isLoading) {
+        return (
+            <Container>
+                <h1>Loading...</h1>
+            </Container>
+        );
+    }
+
     if (!article) {
         return (
             <Container>
-                <h1>Loading</h1>
+                <h1>No article found</h1>
             </Container>
-        )
+        );
     }
 
     return (
