@@ -52,28 +52,39 @@ function MarkdownContent() {
 
             const markdown = await response.text()
 
-            const {data, content} = grayMatter(markdown);
+            try {
+                const {data, content} = grayMatter(markdown);
 
-            const path = markdownUrl.split("/").slice(-1)[0];
-            const date = new Date(path.split("-").slice(0, 3).join("-"));
+                const path = markdownUrl.split("/").slice(-1)[0];
+                const date = new Date(path.split("-").slice(0, 3).join("-"));
 
-            const article = {
-                slug: [],
-                date: date,
-                path: markdownUrl.split("/").slice(-1)[0],
-                content,
-                ...(data as Omit<ArticleType, "content" | "date">)
+                const article = {
+                    slug: [],
+                    date: date,
+                    path: markdownUrl.split("/").slice(-1)[0],
+                    content,
+                    ...(data as Omit<ArticleType, "content" | "date">)
+                }
+
+                setArticle(article as BackendArticle)
+                setError(undefined)
+            } catch (e) {
+
+                if(e instanceof Error) {
+                    console.error(e)
+                    setError(`Failed to parse markdown frontmatter: ${e['message'] ? e.message : JSON.stringify(e)}`);
+                    return
+                }
+
             }
 
-            setArticle(article as BackendArticle)
-            setError(undefined)
         })();
     }, [markdownUrl, searchParams]);
 
     if (error) {
         return (
             <Container>
-                <h1>{error}</h1>
+                <Box color={"red"}>{error}</Box>
                 <TextField onChange={(e) => updateUrl(e.target.value)} label="Enter URL" fullWidth/>
             </Container>
         )
