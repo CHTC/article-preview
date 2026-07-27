@@ -7,7 +7,7 @@ import {useSearchParams} from "next/navigation";
 import {motion} from "motion/react"
 import Divider from '@mui/material/Divider';
 import {ArticleCard, Article} from "@chtc/web-components"
-import {BackendArticle, Article as ArticleType} from "@chtc/web-components/dist/types";
+import {BackendArticle, Article as ArticleType} from "@chtc/web-components/types";
 import {Grid2 as Grid} from "@mui/material";
 
 export default function MarkdownPage() {
