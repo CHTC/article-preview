@@ -2,13 +2,8 @@
 
 import "./globals.css";
 import {AppRouterCacheProvider} from '@mui/material-nextjs/v15-appRouter'
-import {createTheme, ThemeProvider} from '@mui/material'
-
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-  }
-});
+import {pelicanTheme as theme} from "@chtc/web-components/themes"
+import {ThemeProvider} from '@mui/material'
 
 export default function RootLayout({
   children,
