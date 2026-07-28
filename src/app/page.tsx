@@ -26,9 +26,13 @@ function describeType(value: unknown): string {
     return typeof value;
 }
 
+function articleFor(word: string): string {
+    return /^[aeiou]/i.test(word) ? "an" : "a";
+}
+
 function typeMismatch(expected: string, value: unknown): string {
     const actual = describeType(value);
-    return `must be a ${expected} but is currently a ${actual}`;
+    return `must be ${articleFor(expected)} ${expected} but is currently ${articleFor(actual)} ${actual}`;
 }
 
 function validateRequiredString(field: string, value: unknown, errors: string[], warnings: string[]) {
