@@ -359,7 +359,7 @@ function MarkdownContent() {
                             marginRight: "0",
                         }}
                     >
-                        <Chip label="Image Size Warnings" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px" }} />
+                        <Chip label="Image Size Warnings" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px", marginTop: "12px" }} />
                     </Divider>
                     <Box
                         sx={{
@@ -392,7 +392,7 @@ function MarkdownContent() {
                     marginRight: "0",
                 }}
             >
-                <Chip label="Frontmatter Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px" }} />
+                <Chip label="Frontmatter Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px", marginTop: "12px" }} />
             </Divider>
             <Box
                 sx={{
@@ -441,7 +441,7 @@ function MarkdownContent() {
                     marginRight: "0",
                 }}
             >
-                <Chip label="Article Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px" }} />
+                <Chip label="Article Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px", marginTop: "12px" }} />
             </Divider>
             <Box>
                 <Article article={article} />
@@ -458,7 +458,7 @@ function MarkdownContent() {
                     marginRight: "0",
                 }}
             >
-                <Chip label="Card Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px" }} />
+                <Chip label="Card Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px", marginTop: "12px" }} />
             </Divider>
             <Grid container justifyContent={"center"}>
                 <Grid size={{ xs: 12, md: 6, lg: 4 }}>
@@ -479,9 +479,9 @@ function MarkdownContent() {
                     marginRight: "0",
                 }}
             >
-                <Chip label="Banner Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px" }} />
+                <Chip label="Banner Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px", marginTop: "12px" }} />
             </Divider>
-            {article.banner_src || article.banner_alt ? (
+            {typeof article.banner_src === "string" && !isBlank(article.banner_src) ? (
                 <Box>
                     <motion.img
                         src={article.banner_src}
