@@ -10,6 +10,128 @@ import {ArticleCard, Article} from "@chtc/web-components"
 import {BackendArticle, Article as ArticleType} from "@chtc/web-components/types";
 import {Grid2 as Grid} from "@mui/material";
 
+const PUBLISH_ON_VALUES = ["htcondor", "path", "osg", "chtc", "pelican", "fabaid"];
+const TYPE_VALUES = ["news", "user", "tech-blog", "feature"];
+const TAG_VALUES = ["chtc_featured_article"];
+
+function isBlank(value: unknown): boolean {
+    if (typeof value === "string") return value.trim() === "";
+    if (Array.isArray(value)) return value.length === 0;
+    return false;
+}
+
+function describeType(value: unknown): string {
+    if (value === null) return "null";
+    if (Array.isArray(value)) return "array";
+    return typeof value;
+}
+
+function typeMismatch(expected: string, value: unknown): string {
+    const actual = describeType(value);
+    return `must be a ${expected} but is currently a ${actual}`;
+}
+
+function validateRequiredString(field: string, value: unknown, errors: string[], warnings: string[]) {
+    if (value === undefined || value === null) {
+        errors.push(`"${field}" field is missing`);
+    } else if (typeof value !== "string") {
+        errors.push(`"${field}" ${typeMismatch("string", value)}`);
+    } else if (isBlank(value)) {
+        warnings.push(`"${field}" is blank`);
+    }
+}
+
+function validateOptionalString(field: string, value: unknown, errors: string[], warnings: string[]) {
+    if (value === undefined || value === null) {
+        warnings.push(`"${field}" is optional but missing`);
+    } else if (typeof value !== "string") {
+        errors.push(`"${field}" ${typeMismatch("string", value)}`);
+    } else if (isBlank(value)) {
+        warnings.push(`"${field}" is blank`);
+    }
+}
+
+function validateEnumList(field: string, value: unknown, allowed: string[], errors: string[], warnings: string[]) {
+    if (value === undefined || value === null) {
+        errors.push(`"${field}" missing`);
+        return;
+    }
+    const list = Array.isArray(value) ? value : [value];
+    if (!Array.isArray(value)) {
+        errors.push(`"${field}" ${typeMismatch("list", value)}`);
+    }
+    if (isBlank(list)) {
+        warnings.push(`"${field}" is empty`);
+        return;
+    }
+    list.filter((v: unknown) => !allowed.includes(v as string)).forEach((v: unknown) => {
+        errors.push(`"${v}" is not a valid key in "${field}"`);
+    });
+}
+
+function validateFrontmatter(article: any): { errors: string[]; warnings: string[] } {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    validateRequiredString("title", article.title, errors, warnings);
+    validateRequiredString("author", article.author, errors, warnings);
+    validateEnumList("publish_on", article.publish_on, PUBLISH_ON_VALUES, errors, warnings);
+
+    if (article.type === undefined || article.type === null) {
+        errors.push(`"type" field is missing`);
+    } else if (typeof article.type !== "string") {
+        errors.push(`"type" ${typeMismatch("string", article.type)}`);
+    } else if (isBlank(article.type)) {
+        warnings.push(`"type" is blank`);
+    } else if (!TYPE_VALUES.includes(article.type)) {
+        errors.push(`"type" must be one of: ${TYPE_VALUES.join(", ")}`);
+    }
+
+    validateRequiredString("canonical_url", article.canonical_url, errors, warnings);
+
+    if (article.image === undefined || article.image === null) {
+        errors.push(`"image" field is missing`);
+    } else if (typeof article.image !== "object" || Array.isArray(article.image)) {
+        errors.push(`"image" ${typeMismatch("object", article.image)}`);
+    } else {
+        validateRequiredString("image.path", article.image.path, errors, warnings);
+        validateRequiredString("image.alt", article.image.alt, errors, warnings);
+    }
+
+    validateRequiredString("excerpt", article.excerpt, errors, warnings);
+
+    const hasBannerSrc = article.banner_src !== undefined && article.banner_src !== null;
+    const hasBannerAlt = article.banner_alt !== undefined && article.banner_alt !== null;
+    if (!hasBannerSrc && !hasBannerAlt) {
+        warnings.push(`"banner_src" is optional but missing`);
+        warnings.push(`"banner_alt" is optional but missing`);
+    } else if (hasBannerSrc && hasBannerAlt) {
+        validateOptionalString("banner_src", article.banner_src, errors, warnings);
+        validateOptionalString("banner_alt", article.banner_alt, errors, warnings);
+    } else if (hasBannerSrc) {
+        validateOptionalString("banner_src", article.banner_src, errors, warnings);
+        errors.push(`"banner_alt" is missing but "banner_src" is present`);
+    } else {
+        validateOptionalString("banner_alt", article.banner_alt, errors, warnings);
+        errors.push(`"banner_src" is missing but "banner_alt" is present`);
+    }
+
+    if (article.tag === undefined || article.tag === null) {
+        warnings.push(`"tag" is optional but missing`);
+    } else {
+        const tags = Array.isArray(article.tag) ? article.tag : [article.tag];
+        if (isBlank(tags)) {
+            warnings.push(`"tag" is present but empty`);
+        } else {
+            tags.filter((v: unknown) => !TAG_VALUES.includes(v as string)).forEach((v: unknown) => {
+                errors.push(`"${v}" is not a valid key in "tag"`);
+            });
+        }
+    }
+
+    return { errors, warnings };
+}
+
 interface ArticleCardBoundaryProps {
     children: React.ReactNode;
 }
@@ -155,8 +277,10 @@ function MarkdownContent() {
         )
     }
 
+    const {errors: frontmatterErrors, warnings: frontmatterWarnings} = validateFrontmatter(article);
+
     return (
-        <Box>
+        <Box pb="70px">
             <Divider
                 variant="middle"
                 sx={{
@@ -193,10 +317,17 @@ function MarkdownContent() {
                     whiteSpace: "pre-wrap",
                     fontFamily: "monospace",
                     fontSize: "14px",
+                    marginTop: "24px",
                 }}
             >
-                <Box color="red">Error: "title" field is required but missing from frontmatter</Box>
-                <Box color="orange">Warning: "excerpt" is optional and not present</Box>
+                {frontmatterErrors.length === 0 && frontmatterWarnings.length === 0 ? (
+                    <Box color="green">No errors or warnings</Box>
+                ) : (
+                    <>
+                        {frontmatterErrors.map((e, i) => <Box color="red" key={`error-${i}`}>Error: {e}</Box>)}
+                        {frontmatterWarnings.map((w, i) => <Box color="orange" key={`warning-${i}`}>Warning: {w}</Box>)}
+                    </>
+                )}
             </Box>
 
             <Divider
@@ -250,7 +381,7 @@ function MarkdownContent() {
             >
                 <Chip label="Banner Preview" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px" }} />
             </Divider>
-            {article.banner_src ? (
+            {article.banner_src || article.banner_alt ? (
                 <Box>
                     <motion.img
                         src={article.banner_src}
@@ -260,7 +391,21 @@ function MarkdownContent() {
                         whileTap={{ scale: 0.95 }}
                     />
                 </Box>
-            ) : null}
+            ) : (
+                <Box
+                    sx={{
+                        backgroundColor: "white",
+                        border: "1px solid #ddd",
+                        borderRadius: "4px",
+                        padding: "16px",
+                        whiteSpace: "pre-wrap",
+                        fontFamily: "monospace",
+                        fontSize: "14px",
+                    }}
+                >
+                    <Box color="orange">Warning: banner not present</Box>
+                </Box>
+            )}
         </Box>
     )
 }
