@@ -73,12 +73,14 @@ function validateEnumList(field: string, value: unknown, allowed: string[], erro
     });
 }
 
+type RawFrontmatter = Record<string, unknown>;
+
 const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\(([^)]+)\)/g;
 const HTML_IMAGE_REGEX = /<img[^>]*\ssrc=["']([^"']+)["'][^>]*>/gi;
 
-function extractImageUrls(article: any): string[] {
+function extractImageUrls(article: RawFrontmatter): string[] {
     const urls = new Set<string>();
-    const content: string = article?.content ?? "";
+    const content = typeof article.content === "string" ? article.content : "";
 
     for (const match of content.matchAll(MARKDOWN_IMAGE_REGEX)) {
         if (match[1]) urls.add(match[1]);
@@ -87,9 +89,10 @@ function extractImageUrls(article: any): string[] {
         if (match[1]) urls.add(match[1]);
     }
 
-    if (article?.image?.path) urls.add(article.image.path);
-    if (article?.banner_src) urls.add(article.banner_src);
-    if (article?.card_src) urls.add(article.card_src);
+    const image = article.image as RawFrontmatter | undefined;
+    if (typeof image?.path === "string") urls.add(image.path);
+    if (typeof article.banner_src === "string") urls.add(article.banner_src);
+    if (typeof article.card_src === "string") urls.add(article.card_src);
 
     return Array.from(urls).filter((url) => !isBlank(url));
 }
@@ -107,7 +110,7 @@ async function checkImageSize(url: string): Promise<{ url: string; sizeBytes: nu
     }
 }
 
-function validateFrontmatter(article: any): { errors: string[]; warnings: string[] } {
+function validateFrontmatter(article: RawFrontmatter): { errors: string[]; warnings: string[] } {
     const errors: string[] = [];
     const warnings: string[] = [];
 
@@ -132,8 +135,9 @@ function validateFrontmatter(article: any): { errors: string[]; warnings: string
     } else if (typeof article.image !== "object" || Array.isArray(article.image)) {
         errors.push(`"image" ${typeMismatch("object", article.image)}`);
     } else {
-        validateRequiredString("image.path", article.image.path, errors, warnings);
-        validateRequiredString("image.alt", article.image.alt, errors, warnings);
+        const image = article.image as RawFrontmatter;
+        validateRequiredString("image.path", image.path, errors, warnings);
+        validateRequiredString("image.alt", image.alt, errors, warnings);
     }
 
     validateRequiredString("excerpt", article.excerpt, errors, warnings);
@@ -305,7 +309,7 @@ function MarkdownContent() {
         let cancelled = false;
 
         (async () => {
-            const urls = extractImageUrls(article);
+            const urls = extractImageUrls(article as unknown as RawFrontmatter);
             const results = await Promise.all(urls.map(checkImageSize));
             if (cancelled) return;
 
@@ -342,7 +346,7 @@ function MarkdownContent() {
         )
     }
 
-    const {errors: frontmatterErrors, warnings: frontmatterWarnings} = validateFrontmatter(article);
+    const {errors: frontmatterErrors, warnings: frontmatterWarnings} = validateFrontmatter(article as unknown as RawFrontmatter);
 
     return (
         <Box pb="70px">
