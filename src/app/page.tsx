@@ -8,7 +8,7 @@ import {motion} from "motion/react"
 import Divider from '@mui/material/Divider';
 import {ArticleCard, Article} from "@chtc/web-components"
 import {BackendArticle, Article as ArticleType} from "@chtc/web-components/types";
-import {Grid2 as Grid} from "@mui/material";
+import {Grid} from "@mui/material";
 
 const PUBLISH_ON_VALUES = ["htcondor", "path", "osg", "chtc", "pelican", "fabaid"];
 const TYPE_VALUES = ["news", "user", "tech-blog", "feature"];
