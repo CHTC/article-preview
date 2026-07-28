@@ -69,6 +69,40 @@ function validateEnumList(field: string, value: unknown, allowed: string[], erro
     });
 }
 
+const MARKDOWN_IMAGE_REGEX = /!\[[^\]]*\]\(([^)]+)\)/g;
+const HTML_IMAGE_REGEX = /<img[^>]*\ssrc=["']([^"']+)["'][^>]*>/gi;
+
+function extractImageUrls(article: any): string[] {
+    const urls = new Set<string>();
+    const content: string = article?.content ?? "";
+
+    for (const match of content.matchAll(MARKDOWN_IMAGE_REGEX)) {
+        if (match[1]) urls.add(match[1]);
+    }
+    for (const match of content.matchAll(HTML_IMAGE_REGEX)) {
+        if (match[1]) urls.add(match[1]);
+    }
+
+    if (article?.image?.path) urls.add(article.image.path);
+    if (article?.banner_src) urls.add(article.banner_src);
+    if (article?.card_src) urls.add(article.card_src);
+
+    return Array.from(urls).filter((url) => !isBlank(url));
+}
+
+async function checkImageSize(url: string): Promise<{ url: string; sizeBytes: number | null }> {
+    try {
+        const response = await fetch(url, { method: "HEAD" });
+        if (!response.ok) {
+            return { url, sizeBytes: null };
+        }
+        const contentLength = response.headers.get("content-length");
+        return { url, sizeBytes: contentLength ? parseInt(contentLength, 10) : null };
+    } catch {
+        return { url, sizeBytes: null };
+    }
+}
+
 function validateFrontmatter(article: any): { errors: string[]; warnings: string[] } {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -207,6 +241,8 @@ function MarkdownContent() {
 
     const [error, setError] = useState<string | undefined>(undefined);
 
+    const [imageSizeMessages, setImageSizeMessages] = useState<{ text: string; level: "error" | "warning" }[]>([]);
+
     useEffect(() => {
         (async () => {
 
@@ -260,6 +296,31 @@ function MarkdownContent() {
         })();
     }, [markdownUrl, searchParams]);
 
+    useEffect(() => {
+        if (!article) return;
+        let cancelled = false;
+
+        (async () => {
+            const urls = extractImageUrls(article);
+            const results = await Promise.all(urls.map(checkImageSize));
+            if (cancelled) return;
+
+            const messages: { text: string; level: "error" | "warning" }[] = [];
+            for (const {url, sizeBytes} of results) {
+                if (sizeBytes === null) {
+                    messages.push({text: `Could not determine size for "${url}"`, level: "warning"});
+                } else if (sizeBytes > 1024 * 1024) {
+                    messages.push({text: `"${url}" is ${(sizeBytes / 1024 / 1024).toFixed(2)}MB. Please limit images to 1MB in size.`, level: "warning"});
+                }
+            }
+            setImageSizeMessages(messages);
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [article]);
+
     if (error) {
         return (
             <Container>
@@ -281,6 +342,41 @@ function MarkdownContent() {
 
     return (
         <Box pb="70px">
+            {imageSizeMessages.length > 0 && (
+                <>
+                    <Divider
+                        variant="middle"
+                        sx={{
+                            backgroundColor: "black",
+                            width: "100%",
+                            height: "3px",
+                            my: "70px",
+                            marginLeft: "0",
+                            marginRight: "0",
+                        }}
+                    >
+                        <Chip label="Image Size Warnings" size="medium" sx={{ fontSize: "1.2rem", padding: "8px 16px" }} />
+                    </Divider>
+                    <Box
+                        sx={{
+                            backgroundColor: "white",
+                            border: "1px solid #ddd",
+                            borderRadius: "4px",
+                            padding: "16px",
+                            whiteSpace: "pre-wrap",
+                            fontFamily: "monospace",
+                            fontSize: "14px",
+                        }}
+                    >
+                        {imageSizeMessages.map((m, i) => (
+                            <Box color={m.level === "error" ? "red" : "goldenrod"} key={i}>
+                                {m.level === "error" ? "Error: " : "Warning: "}{m.text}
+                            </Box>
+                        ))}
+                    </Box>
+                </>
+            )}
+
             <Divider
                 variant="middle"
                 sx={{
