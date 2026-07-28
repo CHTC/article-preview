@@ -10,6 +10,48 @@ import {ArticleCard, Article} from "@chtc/web-components"
 import {BackendArticle, Article as ArticleType} from "@chtc/web-components/types";
 import {Grid2 as Grid} from "@mui/material";
 
+interface ArticleCardBoundaryProps {
+    children: React.ReactNode;
+}
+
+interface ArticleCardBoundaryState {
+    error: Error | null;
+}
+
+class ArticleCardBoundary extends React.Component<ArticleCardBoundaryProps, ArticleCardBoundaryState> {
+    state: ArticleCardBoundaryState = { error: null };
+
+    static getDerivedStateFromError(error: Error): ArticleCardBoundaryState {
+        return { error };
+    }
+
+    componentDidCatch(error: Error) {
+        console.error("Card Preview failed to render:", error);
+    }
+
+    render() {
+        if (this.state.error) {
+            return (
+                <Box
+                    sx={{
+                        backgroundColor: "white",
+                        border: "1px solid #ddd",
+                        borderRadius: "4px",
+                        padding: "16px",
+                        whiteSpace: "pre-wrap",
+                        fontFamily: "monospace",
+                        fontSize: "14px",
+                    }}
+                >
+                    <Box color="red">Error rendering card preview: {this.state.error.message}. Please check frontmatter for errors.</Box>
+                </Box>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
 export default function MarkdownPage() {
     return (
         <Container>
@@ -142,6 +184,21 @@ function MarkdownContent() {
                 {article ? formatFrontmatter(article) : "No frontmatter"}
             </Box>
 
+            <Box
+                sx={{
+                    backgroundColor: "white",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    padding: "16px",
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "monospace",
+                    fontSize: "14px",
+                }}
+            >
+                <Box color="red">Error: "title" field is required but missing from frontmatter</Box>
+                <Box color="orange">Warning: "excerpt" is optional and not present</Box>
+            </Box>
+
             <Divider
                 variant="middle"
                 sx={{
@@ -174,7 +231,9 @@ function MarkdownContent() {
             </Divider>
             <Grid container justifyContent={"center"}>
                 <Grid size={{ xs: 12, md: 6, lg: 4 }}>
-                    <ArticleCard href={"./"} article={article} />
+                    <ArticleCardBoundary key={article.path}>
+                        <ArticleCard href={"./"} article={article} />
+                    </ArticleCardBoundary>
                 </Grid>
             </Grid>
 
