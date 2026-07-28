@@ -20,6 +20,21 @@ export default function MarkdownPage() {
     );
 }
 
+function formatFrontmatter(frontmatter: BackendArticle) {
+    const newFrontmatter: Partial<BackendArticle> = {...frontmatter};
+    delete newFrontmatter.content;
+    delete newFrontmatter.slug;
+    delete newFrontmatter.path;
+    delete newFrontmatter.date;
+    return JSON.stringify(newFrontmatter, null, 2);
+}
+
+function updateUrl(url: string) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('url', url);
+    window.history.pushState({}, '', currentUrl.toString());
+}
+
 function MarkdownContent() {
     const searchParams = useSearchParams();
     const markdownUrl = searchParams.get("url");
@@ -191,17 +206,4 @@ function MarkdownContent() {
     )
 }
 
-const formatFrontmatter = (frontmatter: BackendArticle) => {
-    const newFrontmatter: Partial<BackendArticle> = {...frontmatter};
-    delete newFrontmatter.content;
-    delete newFrontmatter.slug;
-    delete newFrontmatter.path;
-    delete newFrontmatter.date;
-    return JSON.stringify(newFrontmatter, null, 2);
-}
 
-const updateUrl = (url: string) => {
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set('url', url);
-    window.history.pushState({}, '', currentUrl.toString());
-}
